@@ -1,0 +1,5 @@
+D:\Zhuang\C++Proj\myo_project-master\myo_project-master\myo-sdk-win-0.9.0\samples\x64\Debug\emg-data-sample-VisualStudio2013.exe
+D:\Zhuang\UnityProj\VRSketch+EMG\EMG\myo_project-master\myo_project-master\myo-sdk-win-0.9.0\samples\x64\Debug\emg-data-sample-VisualStudio2013.exe
+C:\Users\zcha621\Documents\PhD\Unity\VRSketch+EMG\EMG\myo_project-master\myo_project-master\myo-sdk-win-0.9.0\samples\x64\Debug\emg-data-sample-VisualStudio2013.exe
+C:\Users\zcha621\Documents\PhD\Unity\VRSketch+EMG2023\EMG\myo_project-master\myo_project-master\myo-sdk-win-0.9.0\samples\x64\Debug\emg-data-sample-VisualStudio2013.exe
+D:\Zhuang\UnityProj\VRSketch+EMG2023\EMG\myo_project-master\myo_project-master\myo-sdk-win-0.9.0\samples\x64\Debug\emg-data-sample-VisualStudio2013.exe
