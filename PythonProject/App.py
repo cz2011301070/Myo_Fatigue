@@ -80,7 +80,7 @@ if __name__ == '__main__':
     # csv handler for feature, store the detected feature
     feature_csv_filename = csv_filename+"_feature"
     feature_csvHandler = CSVHandler(feature_csv_filename)
-    feature_csvfirstrow = ["RMS", "Median_Freq"]
+    feature_csvfirstrow = ["RMS", "Median_Freq", "WCF", "WCW", "WCR", "WCZ", "WCM"]
     feature_csvHandler.write_first_row(feature_csvfirstrow)
     fatigue.register_observer(feature_csvHandler.write_row)
 

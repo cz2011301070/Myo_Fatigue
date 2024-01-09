@@ -375,39 +375,188 @@ def channel_trend(data, fs=200, regressor='linear'):
         axs[i].legend()
 
     plt.tight_layout()
-    plt.show() 
+    plt.show()
 
 
 #================================================================================
 #                            [WCF Estimator]
 #================================================================================ 
-def cal_wcf(emg_data_windows, window_func=np.hanning):
-    num_samples, num_windows, num_channels = emg_data_windows.shape
+def cal_wcf(emg_data, window_func=np.hanning):
+    """
+    Calculate the Weighted Cumulative Frequency (WCF) Estimator for EMG data.
+
+    :param emg_data: 3D numpy array of EMG data (samples, windows, channels)
+    :param window_func: Window function to be used for windowing
+    :return: WCF estimates for each window and channel
+    """
+    num_samples, num_windows, num_channels = emg_data.shape
     wcf = np.empty((num_windows, num_channels))
 
     # calculate gamma for each channel
     gamma = np.zeros(num_channels)
     for channel in range(num_channels):
-        first_window_data = emg_data_windows[:, 0, channel] * window_func(num_samples)
+        first_window_data = emg_data[:, 0, channel] * window_func(num_samples)
         first_window_fft = np.fft.fft(first_window_data)
         gamma[channel] = np.sqrt(np.sum((num_samples - np.arange(1, num_samples)) *
-                                        (np.abs(first_window_fft[1:])**2)) / (num_samples - 1))
+                                        (np.abs(first_window_fft[1:]) ** 2)) / (num_samples - 1))
 
         if gamma[channel] < 0.0001:
-            print(f'gamma too small for channel {channel+1}')
+            print(f'gamma too small for channel {channel + 1}')
 
     # calculate wcf for each window and channel
     for channel in range(num_channels):
         for window_id in range(num_windows):
-            window_data = emg_data_windows[:, window_id, channel]
+            window_data = emg_data[:, window_id, channel]
             # apply window function
             windowed_data = window_data * window_func(num_samples)
             # calculate fft
             dft_window = np.fft.fft(windowed_data, axis=0)
-            dft_magnitude_squared = np.abs(dft_window[1:])**2
-            # calculate wcf 
-            wcf_cur = np.sqrt(np.sum((num_samples - np.arange(1, num_samples)) * dft_magnitude_squared) / (num_samples - 1))
+            dft_magnitude_squared = np.abs(dft_window[1:]) ** 2
+            # calculate wcf
+            wcf_cur = np.sqrt(
+                np.sum((num_samples - np.arange(1, num_samples)) * dft_magnitude_squared) / (num_samples - 1))
             wcf[window_id, channel] = 2 * (window_id + 1) - (1 / gamma[channel]) * wcf_cur
-            
-    return wcf
+
+    return wcf[-1]
+
+
+#================================================================================
+#                            [WCW Estimator]
+#================================================================================
+def cal_wcw(emg_data, wavelet_name='sym5'):
+    """
+    Calculate the Weighted-Cumulated Wavelet (WCW) Estimator for EMG data.
+
+    :param emg_data: 3D numpy array of EMG data (samples, windows, channels)
+    :param wavelet_name: Name of the wavelet to be used for decomposition
+    :return: WCW estimates for each window and channel
+    """
+    num_samples, num_windows, num_channels = emg_data.shape
+    max_levels = int(np.log2(num_samples))
+    wcw_estimates = np.zeros((num_windows, num_channels))
+
+    for channel in range(num_channels):
+        # Wavelet decomposition of the first window to calculate gamma
+        first_data = emg_data[:, 0, channel]
+        first_wavelet_coeffs = pywt.wavedec(first_data, wavelet_name, level=max_levels - 1)
+        gamma = np.sqrt(sum(sum(abs(coeff) ** 2) / (2 ** l) for l, coeff in enumerate(first_wavelet_coeffs)))
+
+        for window in range(num_windows):
+            # Wavelet decomposition for each window
+            data = emg_data[:, window, channel]
+            wavelet_coeffs = pywt.wavedec(data, wavelet_name, level=max_levels - 1)
+
+            # Calculating the weighted cumulative sum of wavelet coefficients
+            lambda_W_sum = sum(sum(abs(coeff) ** 2) / (2 ** l) for l, coeff in enumerate(wavelet_coeffs))
+            # WCW estimate for the current window
+            lambda_W_r = 2 * (window + 1) - (1 / gamma) * np.sqrt(lambda_W_sum)
+            wcw_estimates[window, channel] = lambda_W_r
+
+    return wcw_estimates[-1]
+
+
+
+
+#================================================================================
+#                            [WCR Estimator]
+#================================================================================
+def cal_wcr(emg_data):
+    """
+    Calculate the Weighted Cumulative Root Mean Square (WCR) Estimator for EMG data.
+
+    :param emg_data: 3D numpy array of EMG data (samples, windows, channels)
+    :return: WCR estimates for each window and channel
+    """
+    num_samples, num_windows, num_channels = emg_data.shape
+    wcr = np.zeros((num_windows, num_channels))
+
+    # Calculating lambda_r for each channel
+    for channel in range(num_channels):
+        # Calculate gamma for the channel
+        gamma = np.sqrt(np.sum(emg_data[:, 0, channel] ** 2) / num_samples)
+
+        # Check if gamma is too small to avoid division by zero
+        if gamma < 0.0001:
+            print(f'Gamma value too small for channel {channel + 1}, calculations may be inaccurate.')
+            continue
+
+        # Calculate lambda_r for each window in the channel
+        for window in range(num_windows):
+            # computes the cumulative root mean square for windows up to the current one
+            sum_sqrt = np.sum([np.sqrt(np.sum(emg_data[:, m, channel] ** 2) / num_samples) for m in range(window + 1)])
+            wcr[window, channel] = 2 * (window + 1) - (
+                    1 / gamma) * sum_sqrt  # window+1 is used to match the formula where window index starts from 1
+
+    return wcr[-1]
+
+
+#================================================================================
+#                            [WCZ Estimator]
+#================================================================================
+def cal_wcz(emg_data):
+    """
+    Calculate the Weighted Cumulative Zero-Crossings (WCZ) Estimator for EMG data.
+
+    :param emg_data: 3D numpy array of EMG data (samples, windows, channels)
+    :return: WCZ estimates for each window and channel
+    """
+    num_samples, num_windows, num_channels = emg_data.shape
+    wcz = np.zeros((num_windows, num_channels))
+
+    for channel in range(num_channels):
+        for window in range(num_windows):
+            # Count zero crossings in the data for the current window and channel
+            data = emg_data[:, window, channel]
+            zero_crossings = np.where(np.diff(np.sign(data)))[0]  # Identify indices where zero crossings occur
+            num_zero_crossings = len(zero_crossings)
+
+            # Calculate gamma for the channel (using the first window)
+            if window == 0:
+                gamma = num_zero_crossings / num_samples
+
+            # Calculate lambda_Z for each window in the channel
+            lambda_Z = sum([np.where(np.diff(np.sign(emg_data[:, w, channel])))[0].size for w in range(window + 1)]) / (
+                    num_samples * gamma)
+            wcz[window, channel] = lambda_Z
+
+    return wcz[-1]
+
+
+#================================================================================
+#                            [WCM Estimator]
+#================================================================================
+def cal_wcm(emg_data, sampling_rate=200):
+    """
+    Calculate the Weighted Cumulative Median Frequency (WCM) Estimator for EMG data.
+
+    :param emg_data: 3D numpy array of EMG data (samples, windows, channels)
+    :param sampling_rate: Sampling rate of the EMG data
+    :return: WCM estimates for each window and channel
+    """
+    num_samples, num_windows, num_channels = emg_data.shape
+    wcm = np.zeros((num_windows, num_channels))
+
+    for channel in range(num_channels):
+        mdf_values = []
+
+        for window in range(num_windows):
+            data = emg_data[:, window, channel]
+            # Calculate power spectrum using Welch's method
+            freqs, power_spectrum = welch(data, fs=sampling_rate, nperseg=len(data))
+
+            # Calculate the median frequency (MDF) of the spectrum
+            cumulative_sum = np.cumsum(power_spectrum)
+            total_power = cumulative_sum[-1]
+            median_freq_index = np.where(cumulative_sum >= total_power / 2)[0][0]
+            mdf = freqs[median_freq_index]
+            mdf_values.append(mdf)
+
+        gamma = mdf_values[0]
+
+        for window in range(num_windows):
+            # Calculate lambda_M for each window
+            lambda_m = sum(mdf_values[:window + 1]) / gamma
+            wcm[window, channel] = lambda_m
+
+    return wcm[-1]
 
