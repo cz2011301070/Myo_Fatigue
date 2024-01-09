@@ -417,7 +417,7 @@ def cal_wcf(emg_data, window_func=np.hanning):
                 np.sum((num_samples - np.arange(1, num_samples)) * dft_magnitude_squared) / (num_samples - 1))
             wcf[window_id, channel] = 2 * (window_id + 1) - (1 / gamma[channel]) * wcf_cur
 
-    return wcf
+    return wcf[-1]
 
 
 #================================================================================
@@ -452,7 +452,7 @@ def cal_wcw(emg_data, wavelet_name='sym5'):
             lambda_W_r = 2 * (window + 1) - (1 / gamma) * np.sqrt(lambda_W_sum)
             wcw_estimates[window, channel] = lambda_W_r
 
-    return wcw_estimates
+    return wcw_estimates[-1]
 
 
 
@@ -487,7 +487,7 @@ def cal_wcr(emg_data):
             wcr[window, channel] = 2 * (window + 1) - (
                     1 / gamma) * sum_sqrt  # window+1 is used to match the formula where window index starts from 1
 
-    return wcr
+    return wcr[-1]
 
 
 #================================================================================
@@ -519,7 +519,7 @@ def cal_wcz(emg_data):
                     num_samples * gamma)
             wcz[window, channel] = lambda_Z
 
-    return wcz
+    return wcz[-1]
 
 
 #================================================================================
@@ -558,5 +558,5 @@ def cal_wcm(emg_data, sampling_rate=200):
             lambda_m = sum(mdf_values[:window + 1]) / gamma
             wcm[window, channel] = lambda_m
 
-    return wcm
+    return wcm[-1]
 
